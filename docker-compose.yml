@@ -14,8 +14,8 @@ services:
       - ./dirVarlog:/var/log
     networks:
       mynetworkIpsas:
-        ipv4_address: 172.20.0.10
-      
+        ipv4_address: 192.168.0.20
+
   apache:
     build:
       context: .
@@ -27,7 +27,8 @@ services:
       - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf
       - ./logs:/usr/local/apache2/logs
     networks:
-      - mynetworkIpsas       
+      - mynetworkIpsas
+
   mysql:
     image: mysql:latest
     restart: always
@@ -39,12 +40,28 @@ services:
     volumes:
       - ./mysql:/var/lib/mysql
     networks:
-      - mynetworkIpsas  
+      - mynetworkIpsas
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: pma
+    links:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+    restart: always
+    ports:
+      - 8081:80
+    networks:
+      - mynetworkIpsas
 
   php:
     image: php:latest
     volumes:
       - ./html:/var/www/html
+
   logstash:
     image: docker.elastic.co/logstash/logstash:7.11.0
     volumes:
@@ -53,7 +70,7 @@ services:
     depends_on:
       - elasticsearch
     networks:
-      - mynetworkIpsas  
+      - mynetworkIpsas
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.11.0
@@ -68,7 +85,7 @@ services:
     ports:
       - "9200:9200"
     networks:
-      - mynetworkIpsas    
+      - mynetworkIpsas
 
   kibana:
     image: docker.elastic.co/kibana/kibana:7.11.0
@@ -80,10 +97,10 @@ services:
     depends_on:
       - elasticsearch
     networks:
-      - mynetworkIpsas  
+      - mynetworkIpsas
 
 networks:
-  mynetworkIpsas:    
-     ipam:
+  mynetworkIpsas:
+    ipam:
       config:
-        - subnet: 172.20.0.0/16  
+        - subnet: 192.168.0.0/24

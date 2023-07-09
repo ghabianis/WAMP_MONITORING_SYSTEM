@@ -1,0 +1,89 @@
+version: '3'
+services:
+  syslog-ng:
+    image: balabit/syslog-ng:latest
+    container_name: syslog-ng
+    privileged: true
+    ports:
+      - 514:514/udp
+      - 601:601/tcp
+      - 6514:6514/tcp
+    volumes:
+      - ./syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
+      - ./logs:/var/log/syslog-ng
+      - ./dirVarlog:/var/log
+    networks:
+      mynetworkIpsas:
+        ipv4_address: 172.20.0.10
+      
+  apache:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"
+    volumes:
+      - ./html:/usr/local/apache2/htdocs
+      - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf
+      - ./logs:/usr/local/apache2/logs
+    networks:
+      - mynetworkIpsas       
+  mysql:
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: your_password
+      MYSQL_DATABASE: your_database
+      MYSQL_USER: your_user
+      MYSQL_PASSWORD: your_password
+    volumes:
+      - ./mysql:/var/lib/mysql
+    networks:
+      - mynetworkIpsas  
+
+  php:
+    image: php:latest
+    volumes:
+      - ./html:/var/www/html
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.11.0
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ./dirVarlog:/var/log/logstash
+    depends_on:
+      - elasticsearch
+    networks:
+      - mynetworkIpsas  
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.11.0
+    privileged: true
+    volumes:
+      - ./elasticsearch-data:/usr/share/elasticsearch/data
+    environment:
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - "ES_JAVA_OPTS=-Dlog4j2.disable.jmx=true"
+      - discovery.type=single-node
+    mem_limit: 1073741824
+    ports:
+      - "9200:9200"
+    networks:
+      - mynetworkIpsas    
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.11.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - mynetworkIpsas  
+
+networks:
+  mynetworkIpsas:    
+     ipam:
+      config:
+        - subnet: 172.20.0.0/16  
